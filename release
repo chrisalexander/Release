@@ -1,0 +1,85 @@
+#!/bin/bash
+
+echo "Deploying $1 version $2"
+
+directory="/var/www/"$1
+newdeploy=$directory"/newrelease"
+live=$directory"/live"
+release=$directory"/releases/"$2
+shortrelease="releases/"$2
+
+## Ctrl+C Catcher
+ctrl_c()
+{
+	if [ -d $newdeploy ]
+	then
+		rm $newdeploy
+	fi
+	echo "Aborted"
+	exit
+}
+trap ctrl_c SIGINT
+
+if [ ! -d "$directory" ]
+then
+	echo "FATAL: Release product name is not valid"
+	echo "DEPLOY FAILED"
+	exit
+else
+	echo "Product valid"
+fi
+
+if [ ! -d "$release" ]
+then
+	echo "FATAL: Release version is not valid"
+	echo "DEPLOY FAILED"
+	exit
+else
+	echo "Release valid"
+fi
+
+if [ ! -d "$live" ]
+then
+	echo "NOTICE: Live symlink is not a directory, will create"
+else
+	if [ ! -L "$live" ]
+	then
+		echo "NOTICE: Live symlink currently not active, will create"
+	else
+		echo "Existing symbolic link intact"
+	fi
+fi
+
+if [ -d "$newdeploy" ]
+then
+	echo "Cleaning up existing new release link"
+	if [ -L "$newdeploy" ]
+	then
+		rm $newdeploy
+	else
+		rmdir $newdeploy
+	fi
+fi
+
+ln -s $shortrelease $newdeploy
+
+echo "Deploy ready, press ENTER to continue, Ctrl+C to abort"
+read
+
+echo "Deploying..."
+
+mv -Tf $newdeploy $live
+
+echo "Deployed"
+
+if [ -d "$live" ]
+then
+	if [ -L "$live" ]
+	then
+		echo "Deploy successful"
+		exit
+	fi
+fi
+
+echo "FATAL: Deploy failed"
+exit
